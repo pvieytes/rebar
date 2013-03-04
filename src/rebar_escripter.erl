@@ -56,11 +56,15 @@ escriptize(Config0, AppFile) ->
     %% For internal rebar-private use only. Do not use outside rebar.
     InclExtra = get_extra(Config),
 
+    %% Look for a list of extra files to include in the output file.
+    %% For external use, instead of rebar-private use only.
+    InclMoreExtra = get_external_extra(Config),
+
     %% Construct the archive of everything in ebin/ dir -- put it on the
     %% top-level of the zip file so that code loading works properly.
     EbinPrefix = filename:join(AppNameStr, "ebin"),
     EbinFiles = usort(load_files(EbinPrefix, "*", "ebin")),
-    ExtraFiles = usort(InclBeams ++ InclExtra),
+    ExtraFiles = usort(InclBeams ++ InclExtra ++ InclMoreExtra),
     Files = EbinFiles ++ ExtraFiles,
 
     case zip:create("mem", Files, [memory]) of
@@ -125,6 +129,12 @@ get_extra(Config) ->
     Extra = rebar_config:get_local(Config, escript_incl_extra, []),
     lists:foldl(fun({Wildcard, Dir}, Files) ->
                         load_files(Wildcard, Dir) ++ Files
+                end, [], Extra).
+
+get_external_extra(Config) ->
+    Extra = rebar_config:get_local(Config, escript_add_files, []),
+    lists:foldl(fun(Wildcard, Files0) ->
+                            load_files(Wildcard, ".") ++ Files0
                 end, [], Extra).
 
 load_files(Wildcard, Dir) ->
